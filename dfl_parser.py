@@ -174,6 +174,9 @@ class MatchPositionParser(xml.sax.handler.ContentHandler):
         match
         teams
     """
+    
+
+    
     def __init__(self,match,teams,no_frames = 200000):
         self.currentID = ""
         self.currentPos = np.zeros((no_frames,6),dtype='float32')
@@ -186,6 +189,9 @@ class MatchPositionParser(xml.sax.handler.ContentHandler):
         self.isBall = False
         self.position_data = {'home': {'1st':[], '2nd':[]},
                           'guest': {'1st':[], '2nd':[]}}
+        self.keepOn = True
+        self.maxTime = 0
+        self.limitTime = False
         self.ball = [0]*2
         self.match = match
         self.teams = teams
@@ -197,14 +203,19 @@ class MatchPositionParser(xml.sax.handler.ContentHandler):
             self.currentID = attrs['PersonId']
             self.gameSection = attrs["GameSection"]
             self.teamID = attrs['TeamId']
+            self.keepOn = True
             if self.teamID == "Ball":
                 self.isBall = True
                 print "Ball"
             print self.currentID
-        elif (name == "Frame") & self.inFrameSet:
+        elif not self.keepOn:
+            True
+        elif (name == "Frame") & self.inFrameSet :
             x = float(attrs['X'])
             y = float(attrs['Y'])
             frame = float(attrs['N'])
+            if (frame  > self.maxTime) & self.limitTime:
+                self.keepOn = False
             if not self.isBall:
                 self.currentPos[self.frameCounter,:3] = (frame,x,y)
             else: # ball data
@@ -262,6 +273,25 @@ class MatchPositionParser(xml.sax.handler.ContentHandler):
         Returns:
             Nothing
         """
+        self.keepOn = True
+        self.limitTime = False
+        self.maxTime = 0
+        parser = xml.sax.make_parser()
+        parser.setContentHandler(self)
+        parser.parse(fname)
+        print 'finished parsing position data'
+    def runPart(self,fname,limit):
+        """Starts parsing fname.
+
+        Args:
+            fname is the name of the file.
+        Returns:
+            Nothing
+        """
+        self.keepOn = True
+        self.limitTime = True
+        self.maxTime = limit
+        print self.maxTime
         parser = xml.sax.make_parser()
         parser.setContentHandler(self)
         parser.parse(fname)
